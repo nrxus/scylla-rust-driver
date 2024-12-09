@@ -13,6 +13,7 @@ use std::sync::Arc;
 use thiserror::Error;
 use uuid::Uuid;
 
+use crate::_macro_internal::ColumnSpec;
 use crate::frame::response::result::{ColumnType, CqlValue};
 use crate::frame::types::vint_encode;
 use crate::frame::value::{
@@ -24,7 +25,7 @@ use crate::frame::value::{
 use crate::frame::value::ValueOverflow;
 
 use super::writers::WrittenCellProof;
-use super::{CellWriter, SerializationError};
+use super::{row, CellWriter, RowWriter, SerializationError};
 
 /// A type that can be serialized and sent along with a CQL statement.
 ///
@@ -53,6 +54,22 @@ pub trait SerializeValue {
         typ: &ColumnType,
         writer: CellWriter<'b>,
     ) -> Result<WrittenCellProof<'b>, SerializationError>;
+
+    ///
+    #[doc(hidden)]
+    fn serialize_spec<'b>(
+        &self,
+        spec: &ColumnSpec<'_>,
+        writer: &'b mut RowWriter<'_>,
+    ) -> Result<WrittenCellProof<'b>, row::BuiltinSerializationErrorKind> {
+        let cell_writer = RowWriter::make_cell_writer(writer);
+        self.serialize(spec.typ(), cell_writer).map_err(|err| {
+            row::BuiltinSerializationErrorKind::ColumnSerializationFailed {
+                name: spec.name().to_owned(),
+                err,
+            }
+        })
+    }
 }
 
 macro_rules! exact_type_check {
