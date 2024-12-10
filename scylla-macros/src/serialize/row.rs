@@ -271,19 +271,15 @@ impl Generator for ColumnSortingGenerator<'_> {
                         )?;
                         self.missing.remove(#unflattened_columns);
                     })*
-                    _ => {
+                    _ => 'flatten_try: {
                         #({
                             match self.#flattened_fields.serialize_field(spec, writer)? {
                                 #crate_path::ser::row::FieldStatus::Done => {
                                     self.missing.remove(stringify!(#flattened_fields));
-                                    return ::std::result::Result::Ok(if self.missing.is_empty() {
-                                        #crate_path::ser::row::FieldStatus::Done
-                                    } else {
-                                        #crate_path::ser::row::FieldStatus::NotDone
-                                    });
+                                    break 'flatten_try;
                                 }
                                 #crate_path::ser::row::FieldStatus::NotDone => {
-                                    return ::std::result::Result::Ok(#crate_path::ser::row::FieldStatus::NotDone)
+                                    break 'flatten_try;
                                 }
                                 #crate_path::ser::row::FieldStatus::NotUsed => {}
                             };
