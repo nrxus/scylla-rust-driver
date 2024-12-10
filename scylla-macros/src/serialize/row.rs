@@ -234,7 +234,7 @@ impl Generator for ColumnSortingGenerator<'_> {
         let partial_struct: syn::ItemStruct = parse_quote! {
             pub struct #partial_struct_name #partial_generics {
                 #(#unflattened_fields: &#partial_lt #unflattened_tys,)*
-                #(#flattened_fields: <#flattened_tys as #crate_path::ser::row::SerializeRowByName>::Partial<#partial_lt>,)*
+                #(#flattened_fields: <#flattened_tys as #crate_path::SerializeRowByName>::Partial<#partial_lt>,)*
                 missing: ::std::collections::HashSet<&'static str>,
             }
         };
@@ -283,7 +283,7 @@ impl Generator for ColumnSortingGenerator<'_> {
         };
 
         let partial_serialize: syn::ItemImpl = parse_quote! {
-            impl #partial_impl_generics #crate_path::ser::row::PartialSerializeRowByName for #partial_struct_name #partial_ty_generics #partial_where_clause {
+            impl #partial_impl_generics #crate_path::PartialSerializeRowByName for #partial_struct_name #partial_ty_generics #partial_where_clause {
                 fn serialize_field(
                     &mut self,
                     spec: &#crate_path::ColumnSpec,
@@ -310,7 +310,7 @@ impl Generator for ColumnSortingGenerator<'_> {
         };
 
         let serialize_by_name: syn::ItemImpl = parse_quote! {
-            impl #impl_generics #crate_path::ser::row::SerializeRowByName for #struct_name #ty_generics #where_clause {
+            impl #impl_generics #crate_path::SerializeRowByName for #struct_name #ty_generics #where_clause {
                 type Partial<#partial_lt> = #partial_struct_name #partial_ty_generics where Self: #partial_lt;
 
                 fn partial(&self) -> Self::Partial<'_> {

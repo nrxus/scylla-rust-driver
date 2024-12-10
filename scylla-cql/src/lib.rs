@@ -80,6 +80,42 @@ pub mod _macro_internal {
         CellValueBuilder, CellWriter, RowWriter, SerializationError,
     };
 
+    /// Represents a set of values that can be sent along a CQL statement when serializing by name
+    ///
+    /// For now this trait is an implementation detail of `#[derive(SerializeRow)]` when
+    /// serializing by name
+    #[doc(hidden)]
+    pub trait SerializeRowByName {
+        /// A type that can handle serialization of this struct column-by-column
+        type Partial<'d>: PartialSerializeRowByName
+        where
+            Self: 'd;
+
+        /// Returns a type that can serialize this row "column-by-column"
+        fn partial(&self) -> Self::Partial<'_>;
+    }
+
+    /// How to serialize a row column-by-column
+    ///
+    /// For now this trait is an implementation detail of `#[derive(SerializeRow)]` when
+    /// serializing by name
+    #[doc(hidden)]
+    pub trait PartialSerializeRowByName {
+        /// Serializes a single column in the row according to the information in the
+        /// given context
+        ///
+        /// It returns whether the column finished the serialization of the struct, did
+        /// it partially, none of at all, or errored
+        fn serialize_field(
+            &mut self,
+            spec: &ColumnSpec,
+            writer: &mut RowWriter<'_>,
+        ) -> Result<self::ser::row::FieldStatus, SerializationError>;
+
+        /// Checks if there are any missing columns to finish the serialization
+        fn check_missing(self) -> Result<(), SerializationError>;
+    }
+
     pub trait SerializeRowInOrder {
         fn serialize_in_order(
             &self,
@@ -90,19 +126,23 @@ pub mod _macro_internal {
 
     pub mod ser {
         pub mod row {
-            pub use super::super::SerializeRowInOrder;
-            pub use crate::{
+            use super::super::{
+                PartialSerializeRowByName, SerializeRowByName, SerializeRowInOrder,
+            };
+            use crate::{
                 frame::response::result::ColumnSpec,
                 types::serialize::{
                     row::{
-                        mk_ser_err, mk_typck_err, BuiltinSerializationErrorKind,
-                        BuiltinTypeCheckError, BuiltinTypeCheckErrorKind, RowSerializationContext,
+                        BuiltinSerializationErrorKind, BuiltinTypeCheckErrorKind,
+                        RowSerializationContext,
                     },
                     value::SerializeValue,
                     writers::WrittenCellProof,
                     RowWriter, SerializationError,
                 },
             };
+
+            pub use crate::types::serialize::row::{mk_ser_err, mk_typck_err};
 
             /// Whether a field used a column to finish its serialization or not
             ///
@@ -120,42 +160,6 @@ pub mod _macro_internal {
                 NotDone,
                 /// The column did not belong to this field
                 NotUsed,
-            }
-
-            /// Represents a set of values that can be sent along a CQL statement when serializing by name
-            ///
-            /// For now this trait is an implementation detail of `#[derive(SerializeRow)]` when
-            /// serializing by name
-            #[doc(hidden)]
-            pub trait SerializeRowByName {
-                /// A type that can handle serialization of this struct column-by-column
-                type Partial<'d>: PartialSerializeRowByName
-                where
-                    Self: 'd;
-
-                /// Returns a type that can serialize this row "column-by-column"
-                fn partial(&self) -> Self::Partial<'_>;
-            }
-
-            /// How to serialize a row column-by-column
-            ///
-            /// For now this trait is an implementation detail of `#[derive(SerializeRow)]` when
-            /// serializing by name
-            #[doc(hidden)]
-            pub trait PartialSerializeRowByName {
-                /// Serializes a single column in the row according to the information in the
-                /// given context
-                ///
-                /// It returns whether the column finished the serialization of the struct, did
-                /// it partially, none of at all, or errored
-                fn serialize_field(
-                    &mut self,
-                    spec: &ColumnSpec,
-                    writer: &mut RowWriter<'_>,
-                ) -> Result<FieldStatus, SerializationError>;
-
-                /// Checks if there are any missing columns to finish the serialization
-                fn check_missing(self) -> Result<(), SerializationError>;
             }
 
             pub struct ByName<'t, T: SerializeRowByName>(pub &'t T);
