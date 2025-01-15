@@ -45,13 +45,13 @@ use scylla_cql::types::serialize::batch::{BatchValues, BatchValuesIterator};
 use scylla_cql::types::serialize::raw_batch::RawBatchValuesAdapter;
 use scylla_cql::types::serialize::row::{RowSerializationContext, SerializedValues};
 use socket2::{SockRef, TcpKeepalive};
-#[cfg(feature = "ssl")]
+#[cfg(feature = "openssl")]
 pub(crate) use ssl_config::SslConfig;
 use std::borrow::Cow;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::convert::TryFrom;
 use std::net::{IpAddr, SocketAddr};
-#[cfg(feature = "ssl")]
+#[cfg(feature = "openssl")]
 use std::pin::Pin;
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
@@ -65,7 +65,7 @@ use tokio::io::{split, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, BufWrite
 use tokio::net::{TcpSocket, TcpStream};
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::Instant;
-#[cfg(feature = "ssl")]
+#[cfg(feature = "openssl")]
 use tokio_openssl::SslStream;
 use tracing::{debug, error, trace, warn};
 use uuid::Uuid;
@@ -211,7 +211,7 @@ struct TaskResponse {
     body: Bytes,
 }
 
-#[cfg(feature = "ssl")]
+#[cfg(feature = "openssl")]
 mod ssl_config {
     use openssl::{
         error::ErrorStack,
@@ -324,7 +324,7 @@ pub(crate) struct ConnectionConfig {
     pub(crate) compression: Option<Compression>,
     pub(crate) tcp_nodelay: bool,
     pub(crate) tcp_keepalive_interval: Option<Duration>,
-    #[cfg(feature = "ssl")]
+    #[cfg(feature = "openssl")]
     pub(crate) ssl_config: Option<SslConfig>,
     pub(crate) connect_timeout: std::time::Duration,
     // should be Some only in control connections,
@@ -350,7 +350,7 @@ impl Default for ConnectionConfig {
             tcp_nodelay: true,
             tcp_keepalive_interval: None,
             event_sender: None,
-            #[cfg(feature = "ssl")]
+            #[cfg(feature = "openssl")]
             ssl_config: None,
             connect_timeout: std::time::Duration::from_secs(5),
             default_consistency: Default::default(),
@@ -372,7 +372,7 @@ impl Default for ConnectionConfig {
 }
 
 impl ConnectionConfig {
-    #[cfg(feature = "ssl")]
+    #[cfg(feature = "openssl")]
     fn is_ssl(&self) -> bool {
         #[cfg(feature = "cloud")]
         if self.cloud_config.is_some() {
@@ -381,7 +381,7 @@ impl ConnectionConfig {
         self.ssl_config.is_some()
     }
 
-    #[cfg(not(feature = "ssl"))]
+    #[cfg(not(feature = "openssl"))]
     fn is_ssl(&self) -> bool {
         false
     }
@@ -1329,7 +1329,7 @@ impl Connection {
         router_handle: Arc<RouterHandle>,
         node_address: IpAddr,
     ) -> Result<RemoteHandle<()>, std::io::Error> {
-        #[cfg(feature = "ssl")]
+        #[cfg(feature = "openssl")]
         if let Some(ssl_config) = &config.ssl_config {
             let ssl = ssl_config.new_ssl()?;
             let mut stream = SslStream::new(ssl, stream)?;

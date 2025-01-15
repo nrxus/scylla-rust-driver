@@ -15,7 +15,7 @@ use crate::errors::NewSessionError;
 use crate::policies::address_translator::AddressTranslator;
 use crate::policies::host_filter::HostFilter;
 use crate::statement::Consistency;
-#[cfg(feature = "ssl")]
+#[cfg(feature = "openssl")]
 use openssl::ssl::SslContext;
 use std::borrow::Borrow;
 use std::marker::PhantomData;
@@ -352,7 +352,7 @@ impl GenericSessionBuilder<DefaultMode> {
     /// # Ok(())
     /// # }
     /// ```
-    #[cfg(feature = "ssl")]
+    #[cfg(feature = "openssl")]
     pub fn ssl_context(mut self, ssl_context: Option<SslContext>) -> Self {
         self.config.ssl_context = ssl_context;
         self
