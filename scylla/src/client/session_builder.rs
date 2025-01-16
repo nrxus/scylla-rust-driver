@@ -9,14 +9,14 @@ use super::session::{
 };
 use super::{Compression, PoolSize, SelfIdentity};
 use crate::authentication::{AuthenticatorProvider, PlainTextAuthenticator};
+#[cfg(feature = "__tls")]
+use crate::client::session::TlsContext;
 #[cfg(feature = "cloud")]
 use crate::cloud::{CloudConfig, CloudConfigError};
 use crate::errors::NewSessionError;
 use crate::policies::address_translator::AddressTranslator;
 use crate::policies::host_filter::HostFilter;
 use crate::statement::Consistency;
-#[cfg(feature = "openssl")]
-use openssl::ssl::SslContext;
 use std::borrow::Borrow;
 use std::marker::PhantomData;
 use std::net::SocketAddr;
@@ -346,15 +346,15 @@ impl GenericSessionBuilder<DefaultMode> {
     ///
     /// let session: Session = SessionBuilder::new()
     ///     .known_node("127.0.0.1:9042")
-    ///     .ssl_context(Some(context_builder.build()))
+    ///     .tls_context(Some(context_builder.build()))
     ///     .build()
     ///     .await?;
     /// # Ok(())
     /// # }
     /// ```
-    #[cfg(feature = "openssl")]
-    pub fn ssl_context(mut self, ssl_context: Option<SslContext>) -> Self {
-        self.config.ssl_context = ssl_context;
+    #[cfg(feature = "__tls")]
+    pub fn tls_context(mut self, tls_context: Option<impl Into<TlsContext>>) -> Self {
+        self.config.tls_context = tls_context.map(|t| t.into());
         self
     }
 }
